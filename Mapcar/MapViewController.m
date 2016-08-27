@@ -17,6 +17,8 @@
 @interface MapViewController ()<MAMapViewDelegate,NSURLConnectionDataDelegate>
 @property (nonatomic, strong) MAMapView *mapView;
 @property (nonatomic, strong) NSMutableArray *bikeModelarray;
+@property (nonatomic, assign) CLLocationDegrees latitude;
+@property (nonatomic, assign) CLLocationDegrees longitude;
 @end
 
 @implementation MapViewController
@@ -34,36 +36,30 @@
     _mapView.delegate = self;
     ///把地图添加至view
     [self.view addSubview:_mapView];
-    
     _bikeModelarray = [[NSMutableArray alloc]init];
-    NSString *bikeUrl = [NSString stringWithFormat:@"%@?lat=%f&lng=%f",BikeURL,30.187725,120.200651];
-    NSURL *url=[NSURL URLWithString:bikeUrl];
-    NSURLRequest *request = [NSURLRequest requestWithURL:url];
-    NSOperationQueue *queue=[NSOperationQueue mainQueue];
-    [NSURLConnection sendAsynchronousRequest:request queue:queue completionHandler:^(NSURLResponse * _Nullable response, NSData * _Nullable data, NSError * _Nullable connectionError) {
-        if (!connectionError) {
-            NSDictionary *dic = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:nil];
-            BikeModel *bikeModel;
-            for (int i = 0;i < 10; i++) {
-                bikeModel = [BikeModel DeviceinfoWithDict:dic[@"data"][i]];
-                [_bikeModelarray addObject:bikeModel];
-            }
-            [self BikePointAnnotation:_bikeModelarray];
-        }
-    }];
+    
+
 
 }
 
-- (void)BikePointAnnotation:(NSMutableArray *)bikeModelarray{
-    for (int i = 0;i < 10; i++) {
-        BikeModel *bikeModel = bikeModelarray[i];
-        MAPointAnnotation *pointAnnotation = [[MAPointAnnotation alloc] init];
-        pointAnnotation.coordinate = CLLocationCoordinate2DMake(bikeModel.lat, bikeModel.lon);
-        pointAnnotation.title = bikeModel.name;
-        pointAnnotation.subtitle = [NSString stringWithFormat:@"可租%ld，可还%ld",(long)bikeModel.rentcount,(long)bikeModel.restorecount];
-        
-        [_mapView addAnnotation:pointAnnotation];
+- (void)BikePointAnnotation:(BikeModel *)bikeModel{
+    for (BikeModel *bikeModelold in _bikeModelarray) {
+        if (bikeModel.bikeid == bikeModelold.bikeid) {
+            if (bikeModel.restorecount == bikeModelold.restorecount) {
+                return;
+            }else{
+                //移除坐标
+            }
+            
+        }
     }
+    MAPointAnnotation *pointAnnotation = [[MAPointAnnotation alloc] init];
+    pointAnnotation.coordinate = CLLocationCoordinate2DMake(bikeModel.lat - 0.006000, bikeModel.lon - 0.006300);
+    pointAnnotation.title = bikeModel.name;
+    pointAnnotation.subtitle = [NSString stringWithFormat:@"可租%ld，可还%ld",(long)bikeModel.rentcount,(long)bikeModel.restorecount];
+    
+    [_mapView addAnnotation:pointAnnotation];
+    [_bikeModelarray addObject:bikeModel];
     
 }
 
@@ -84,7 +80,7 @@
         }
         annotationView.canShowCallout= YES;       //设置气泡可以弹出，默认为NO
         annotationView.animatesDrop = YES;        //设置标注动画显示，默认为NO
-        annotationView.draggable = YES;        //设置标注可以拖动，默认为NO
+        annotationView.draggable = NO;        //设置标注可以拖动，默认为NO
         annotationView.pinColor = MAPinAnnotationColorPurple;
         return annotationView;
     }
@@ -99,6 +95,25 @@ updatingLocation:(BOOL)updatingLocation
     {
         //取出当前位置的坐标
         NSLog(@"latitude : %f,longitude: %f",userLocation.coordinate.latitude,userLocation.coordinate.longitude);
+        _latitude = userLocation.coordinate.latitude;
+        _longitude = userLocation.coordinate.longitude;
+        
+        NSString *bikeUrl = [NSString stringWithFormat:@"%@?lat=%f&lng=%f",BikeURL,_latitude,_longitude];
+        NSURL *url=[NSURL URLWithString:bikeUrl];
+        NSURLRequest *request = [NSURLRequest requestWithURL:url];
+        NSOperationQueue *queue=[NSOperationQueue mainQueue];
+        [NSURLConnection sendAsynchronousRequest:request queue:queue completionHandler:^(NSURLResponse * _Nullable response, NSData * _Nullable data, NSError * _Nullable connectionError) {
+            if (!connectionError) {
+                NSDictionary *dic = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:nil];
+                BikeModel *bikeModel;
+                NSInteger countI = [dic[@"count"] integerValue];
+                for (int i = 0;i < countI; i++) {
+                    bikeModel = [BikeModel DeviceinfoWithDict:dic[@"data"][i]];
+                    [self BikePointAnnotation:bikeModel];
+                }
+            }
+        }];
+
     }
 }
 
