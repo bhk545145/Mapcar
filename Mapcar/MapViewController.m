@@ -44,17 +44,18 @@
 
 - (void)BikePointAnnotation:(BikeModel *)bikeModel{
     for (BikeModel *bikeModelold in _bikeModelarray) {
-        if (bikeModel.bikeid == bikeModelold.bikeid) {
+        if (bikeModel.number == bikeModelold.number) {
             if (bikeModel.restorecount == bikeModelold.restorecount) {
                 return;
             }else{
                 //移除坐标
+                NSLog(@"旧：%@ 可租%ld，可还%ld",bikeModelold.name,bikeModelold.rentcount,bikeModelold.restorecount);
+                NSLog(@"新：%@ 可租%ld，可还%ld",bikeModel.name,bikeModel.rentcount,bikeModel.restorecount);
             }
-            
         }
     }
     MAPointAnnotation *pointAnnotation = [[MAPointAnnotation alloc] init];
-    pointAnnotation.coordinate = CLLocationCoordinate2DMake(bikeModel.lat - 0.006000, bikeModel.lon - 0.006300);
+    pointAnnotation.coordinate = CLLocationCoordinate2DMake(bikeModel.lat - 0.006000, bikeModel.lon - 0.006500);
     pointAnnotation.title = bikeModel.name;
     pointAnnotation.subtitle = [NSString stringWithFormat:@"可租%ld，可还%ld",(long)bikeModel.rentcount,(long)bikeModel.restorecount];
     
@@ -94,9 +95,9 @@ updatingLocation:(BOOL)updatingLocation
     if(updatingLocation)
     {
         //取出当前位置的坐标
-        NSLog(@"latitude : %f,longitude: %f",userLocation.coordinate.latitude,userLocation.coordinate.longitude);
-        _latitude = userLocation.coordinate.latitude;
-        _longitude = userLocation.coordinate.longitude;
+        //NSLog(@"latitude : %f,longitude: %f",userLocation.coordinate.latitude,userLocation.coordinate.longitude);
+        _latitude = userLocation.coordinate.latitude + 0.006000;
+        _longitude = userLocation.coordinate.longitude + 0.006500;
         
         NSString *bikeUrl = [NSString stringWithFormat:@"%@?lat=%f&lng=%f",BikeURL,_latitude,_longitude];
         NSURL *url=[NSURL URLWithString:bikeUrl];

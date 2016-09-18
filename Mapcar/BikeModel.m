@@ -19,6 +19,7 @@
         _lon = [dict[@"lon"] floatValue];
         _rentcount = [dict[@"rentcount"] integerValue];
         _restorecount = [dict[@"restorecount"] integerValue];
+        _number = [dict[@"number"] integerValue];
         
     }
     return self;
