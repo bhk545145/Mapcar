@@ -19,6 +19,7 @@
 @property (nonatomic, strong) NSMutableArray *bikeModelarray;
 @property (nonatomic, assign) CLLocationDegrees latitude;
 @property (nonatomic, assign) CLLocationDegrees longitude;
+@property (nonatomic, assign) BOOL isZero;
 @end
 
 @implementation MapViewController
@@ -43,25 +44,21 @@
 }
 
 - (void)BikePointAnnotation:(BikeModel *)bikeModel{
-    for (BikeModel *bikeModelold in _bikeModelarray) {
-        if (bikeModel.number == bikeModelold.number) {
-            if (bikeModel.restorecount == bikeModelold.restorecount) {
-                return;
-            }else{
-                //移除坐标
-                NSLog(@"旧：%@ 可租%ld，可还%ld",bikeModelold.name,bikeModelold.rentcount,bikeModelold.restorecount);
-                NSLog(@"新：%@ 可租%ld，可还%ld",bikeModel.name,bikeModel.rentcount,bikeModel.restorecount);
-            }
-        }
-    }
+    
     MAPointAnnotation *pointAnnotation = [[MAPointAnnotation alloc] init];
     pointAnnotation.coordinate = CLLocationCoordinate2DMake(bikeModel.lat - 0.006000, bikeModel.lon - 0.006500);
     pointAnnotation.title = bikeModel.name;
     pointAnnotation.subtitle = [NSString stringWithFormat:@"可租%ld，可还%ld",(long)bikeModel.rentcount,(long)bikeModel.restorecount];
-    
     [_mapView addAnnotation:pointAnnotation];
     [_bikeModelarray addObject:bikeModel];
     
+}
+
+- (void)BikeRemovePointAnnotation:(BikeModel *)bikeModel{
+    MAPointAnnotation *pointAnnotation = [[MAPointAnnotation alloc] init];
+    pointAnnotation.coordinate = CLLocationCoordinate2DMake(bikeModel.lat - 0.006000, bikeModel.lon - 0.006500);
+    [_mapView removeAnnotation:pointAnnotation];
+    //[_bikeModelarray removeObject:bikeModel];
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -74,15 +71,28 @@
     if ([annotation isKindOfClass:[MAPointAnnotation class]])
     {
         static NSString *pointReuseIndentifier = @"pointReuseIndentifier";
-        MAPinAnnotationView*annotationView = (MAPinAnnotationView*)[mapView dequeueReusableAnnotationViewWithIdentifier:pointReuseIndentifier];
+        MAAnnotationView *annotationView = (MAAnnotationView*)[mapView dequeueReusableAnnotationViewWithIdentifier:pointReuseIndentifier];
         if (annotationView == nil)
         {
-            annotationView = [[MAPinAnnotationView alloc] initWithAnnotation:annotation reuseIdentifier:pointReuseIndentifier];
+            annotationView = [[MAAnnotationView alloc] initWithAnnotation:annotation reuseIdentifier:pointReuseIndentifier];
         }
-        annotationView.canShowCallout= YES;       //设置气泡可以弹出，默认为NO
-        annotationView.animatesDrop = YES;        //设置标注动画显示，默认为NO
-        annotationView.draggable = NO;        //设置标注可以拖动，默认为NO
-        annotationView.pinColor = MAPinAnnotationColorPurple;
+        NSInteger Bikecount = [[annotation.subtitle substringFromIndex:annotation.subtitle.length - 1] intValue];
+        BOOL isPureInt = [self isPureInt:[annotation.subtitle substringFromIndex:annotation.subtitle.length - 2]];
+        if (isPureInt) {
+            annotationView.image = [UIImage imageNamed:@"58.png"];
+        }else{
+            if (Bikecount == 0) {
+                annotationView.image = [UIImage imageNamed:@"29.png"];
+            }else{
+                annotationView.image = [UIImage imageNamed:@"58.png"];
+            }
+        }
+        
+        
+        
+        annotationView.canShowCallout = YES;
+        //设置中心点偏移，使得标注底部中间点成为经纬度对应点
+        annotationView.centerOffset = CGPointMake(0, -18);
         return annotationView;
     }
     return nil;
@@ -110,6 +120,18 @@ updatingLocation:(BOOL)updatingLocation
                 NSInteger countI = [dic[@"count"] integerValue];
                 for (int i = 0;i < countI; i++) {
                     bikeModel = [BikeModel DeviceinfoWithDict:dic[@"data"][i]];
+                    for (BikeModel *bikeModelold in _bikeModelarray) {
+                        if (bikeModel.number == bikeModelold.number) {
+                            if (bikeModel.restorecount == bikeModelold.restorecount) {
+                                return;
+                            }else{
+                                //移除坐标
+                                NSLog(@"旧：%@ 可租%ld，可还%ld",bikeModelold.name,bikeModelold.rentcount,bikeModelold.restorecount);
+                                NSLog(@"新：%@ 可租%ld，可还%ld",bikeModel.name,bikeModel.rentcount,bikeModel.restorecount);
+                                [self BikeRemovePointAnnotation:bikeModelold];
+                            }
+                        }
+                    }
                     [self BikePointAnnotation:bikeModel];
                 }
             }
@@ -136,5 +158,15 @@ updatingLocation:(BOOL)updatingLocation
         
         view.calloutOffset = CGPointMake(0, 0);
     } 
+}
+
+- (BOOL)isPureInt:(NSString *)string{
+    
+    NSScanner* scan = [NSScanner scannerWithString:string];
+    
+    int val;
+    
+    return [scan scanInt:&val] && [scan isAtEnd];
+    
 }
 @end
